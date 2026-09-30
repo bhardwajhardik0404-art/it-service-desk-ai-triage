@@ -1,0 +1,58 @@
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: service_desk
+      POSTGRES_USER: service_desk
+      POSTGRES_PASSWORD: service_desk
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U service_desk"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+
+  redis:
+    image: redis:7-alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+
+  api:
+    build: ./backend
+    env_file: .env
+    command: sh -c "python -m app.seed && uvicorn app.main:app --host 0.0.0.0 --port 8000"
+    depends_on:
+      db: {condition: service_healthy}
+      redis: {condition: service_healthy}
+    ports:
+      - "8000:8000"
+
+  worker:
+    build: ./backend
+    env_file: .env
+    command: celery -A app.jobs.celery_app worker --loglevel=info
+    depends_on:
+      api: {condition: service_started}
+      redis: {condition: service_healthy}
+
+  beat:
+    build: ./backend
+    env_file: .env
+    command: celery -A app.jobs.celery_app beat --loglevel=info
+    depends_on:
+      worker: {condition: service_started}
+
+  web:
+    build: ./frontend
+    depends_on:
+      api: {condition: service_started}
+    ports:
+      - "3000:80"
+
+volumes:
+  pgdata:
+
