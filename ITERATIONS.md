@@ -5,7 +5,7 @@ This log records the work pushed to GitHub. Dates are the actual commit dates; p
 | Date (IST) | Focus | Status |
 |---|---|---|
 | Sep 30 | Published the existing working baseline: employee, agent and admin flows; account registration; AI triage; ticket workflow; SLA rules; tests and local setup. | Done |
-| Oct 1 | Tighten account validation and sign-in error handling. | Planned |
+| Oct 1 | Trim and validate account input consistently, show specific validation and connection errors in the UI, clarify password rules, and verify the auth flows. | Done |
 | Oct 2 | Improve the ticket creation and queue experience. | Planned |
 | Oct 3 | Make triage decisions and manual overrides easier to inspect. | Planned |
 | Oct 4 | Improve SLA deadline and escalation visibility. | Planned |

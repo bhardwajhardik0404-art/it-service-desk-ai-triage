@@ -193,6 +193,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 .auth-switch{font-size:13px;color:#64788b;margin:19px 0 0}
 .auth-switch button{border:0;background:none;color:#17537f;font-weight:650;padding:0 0 2px;cursor:pointer}
 .auth-switch button:hover{text-decoration:underline}
+.field-help{color:#6b7e90;font-size:11px;font-weight:400;line-height:1.4}
 .demo-toggle{display:block;margin:22px 0 0;padding:0;border:0;background:none;color:#5f7386;font-size:12px;font-weight:600;text-decoration:underline;text-underline-offset:3px}
 .demo-toggle:hover{color:#17537f}
 .demo-toggle+.demo-heading{margin-top:21px}

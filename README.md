@@ -16,7 +16,7 @@ The seed data includes an overdue VPN ticket for the escalation demonstration.
 
 ## Real user accounts
 
-- On the sign-in screen, select **Create an account** to register as an employee. Use your own email and a password of at least 10 characters. The account is saved in the database and signed in immediately.
+- On the sign-in screen, select **Create an account** to register as an employee. Use your own email and a password of at least 10 characters with a letter and a number. The account is saved in the database and signed in immediately.
 - An admin can open **Administration → Create agent account**, set an initial password, and assign the new agent to a support team. Public registration cannot create an agent or admin role.
 - Every signed-in user can open **My account** to change their password. This invalidates their earlier session cookies.
 - Passwords are stored as salted PBKDF2 hashes. Authentication uses an HTTP-only, same-site session cookie with an eight-hour expiry. API routes enforce employee, agent and admin permissions on the server.

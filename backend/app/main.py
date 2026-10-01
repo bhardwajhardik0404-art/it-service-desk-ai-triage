@@ -2,7 +2,7 @@ from collections import Counter
 from datetime import datetime, timezone
 
 from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException, Response
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import desc, func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -26,10 +26,31 @@ class LoginInput(BaseModel):
     password: str
 
 
+def validate_account_password(value: str) -> str:
+    if not any(char.isalpha() for char in value) or not any(char.isdigit() for char in value):
+        raise ValueError("Password must include a letter and a number")
+    return value
+
+
 class RegisterInput(BaseModel):
     name: str = Field(min_length=2, max_length=100)
     email: str = Field(min_length=5, max_length=254, pattern=r"^[^\s@]+@[^\s@]+\.[^\s@]+$")
     password: str = Field(min_length=10, max_length=128)
+
+    @field_validator("name", mode="before")
+    @classmethod
+    def trim_name(cls, value: str) -> str:
+        return value.strip() if isinstance(value, str) else value
+
+    @field_validator("email", mode="before")
+    @classmethod
+    def normalize_email(cls, value: str) -> str:
+        return value.strip().lower() if isinstance(value, str) else value
+
+    @field_validator("password")
+    @classmethod
+    def validate_password(cls, value: str) -> str:
+        return validate_account_password(value)
 
 
 class AgentInput(RegisterInput):
@@ -39,6 +60,11 @@ class AgentInput(RegisterInput):
 class PasswordInput(BaseModel):
     current_password: str
     new_password: str = Field(min_length=10, max_length=128)
+
+    @field_validator("new_password")
+    @classmethod
+    def validate_new_password(cls, value: str) -> str:
+        return validate_account_password(value)
 
 
 class TicketInput(BaseModel):
@@ -139,10 +165,7 @@ def login(body: LoginInput, response: Response, db: Session = Depends(get_db)) -
 
 @app.post("/api/auth/register", status_code=201)
 def register(body: RegisterInput, response: Response, db: Session = Depends(get_db)) -> dict:
-    name = body.name.strip()
-    if len(name) < 2:
-        raise HTTPException(status_code=422, detail="Name must contain at least 2 characters")
-    user = User(name=name, email=body.email.lower().strip(),
+    user = User(name=body.name, email=body.email,
                 password_hash=hash_password(body.password), role="employee")
     db.add(user)
     try:
@@ -183,12 +206,9 @@ def change_password(body: PasswordInput, response: Response, db: Session = Depen
 
 @app.post("/api/admin/agents", status_code=201)
 def create_agent(body: AgentInput, db: Session = Depends(get_db), _: User = Depends(require_admin)) -> dict:
-    name = body.name.strip()
-    if len(name) < 2:
-        raise HTTPException(status_code=422, detail="Name must contain at least 2 characters")
     if not db.get(Team, body.team_id):
         raise HTTPException(status_code=404, detail="Support team not found")
-    user = User(name=name, email=body.email.lower().strip(),
+    user = User(name=body.name, email=body.email,
                 password_hash=hash_password(body.password), role="agent", team_id=body.team_id)
     db.add(user)
     try:

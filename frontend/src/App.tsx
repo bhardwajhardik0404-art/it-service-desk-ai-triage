@@ -39,7 +39,7 @@ function Empty({ title, detail }: { title: string; detail: string }) {
 }
 
 function ErrorBox({ message }: { message: string }) {
-  return message ? <div className="error-box"><XCircle size={16} />{message}</div> : null
+  return message ? <div className="error-box" role="alert"><XCircle size={16} />{message}</div> : null
 }
 
 function Login({ onLogin }: { onLogin: (user: User) => void }) {
@@ -55,7 +55,7 @@ function Login({ onLogin }: { onLogin: (user: User) => void }) {
     e.preventDefault(); setBusy(true); setError('')
     if (mode === 'register' && password !== confirmPassword) { setError('Passwords do not match'); setBusy(false); return }
     try { onLogin(await api<User>(mode === 'register' ? '/auth/register' : '/auth/login', { method: 'POST', body: json(mode === 'register' ? { name, email, password } : { email, password }) })) }
-    catch (err) { setError((err as Error).message) }
+    catch (err) { setError((err as Error).message); if (mode === 'login') setPassword('') }
     finally { setBusy(false) }
   }
   return <div className="login-page">
@@ -69,8 +69,8 @@ function Login({ onLogin }: { onLogin: (user: User) => void }) {
     <div className="login-panel"><div className="login-form-wrap"><div className="eyebrow">ACCOUNT ACCESS</div><h2>{mode === 'login' ? 'Sign in' : 'Create employee account'}</h2>
       <p className="muted">{mode === 'login' ? 'Sign in with your account or use a demo account below.' : 'Create an account to raise and track your own IT requests.'}</p>
       <form onSubmit={submit} className="login-form">{mode === 'register' && <label>Full name<input value={name} onChange={e => setName(e.target.value)} autoComplete="name" required minLength={2} maxLength={100} /></label>}
-        <label>Email address<input value={email} onChange={e => setEmail(e.target.value)} type="email" autoComplete="email" required /></label>
-        <label>Password<input value={password} onChange={e => setPassword(e.target.value)} type="password" autoComplete={mode === 'login' ? 'current-password' : 'new-password'} required minLength={mode === 'register' ? 10 : undefined} /></label>
+        <label>Email address<input value={email} onChange={e => setEmail(e.target.value)} onBlur={() => setEmail(email.trim())} type="email" autoComplete="email" required /></label>
+        <label>Password<input value={password} onChange={e => setPassword(e.target.value)} type="password" autoComplete={mode === 'login' ? 'current-password' : 'new-password'} required minLength={mode === 'register' ? 10 : undefined} />{mode === 'register' && <small className="field-help">At least 10 characters, including a letter and a number.</small>}</label>
         {mode === 'register' && <label>Confirm password<input value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} type="password" autoComplete="new-password" required /></label>}
         <ErrorBox message={error} /><button className="button primary wide" disabled={busy}>{busy ? 'Please wait…' : mode === 'login' ? 'Sign in' : 'Create account'} <ArrowRight size={17} /></button></form>
       <p className="auth-switch">{mode === 'login' ? 'New employee?' : 'Already have an account?'} <button type="button" onClick={() => { setMode(mode === 'login' ? 'register' : 'login'); setError(''); setPassword(''); setConfirmPassword('') }}>{mode === 'login' ? 'Create an account' : 'Sign in'}</button></p>
@@ -263,7 +263,7 @@ function Account({ user }: { user: User }) {
     <div className="account-layout"><section className="panel account-panel"><h3>Account details</h3><div className="account-detail"><span>Name</span><strong>{user.name}</strong></div><div className="account-detail"><span>Email</span><strong>{user.email}</strong></div><div className="account-detail"><span>Role</span><strong>{statusLabel(user.role)}</strong></div></section>
     <form className="panel account-panel login-form" onSubmit={submit}><h3>Change password</h3><p className="muted">Use at least 10 characters. Changing your password ends your other sessions.</p>
       <label>Current password<input type="password" autoComplete="current-password" required value={currentPassword} onChange={e => setCurrentPassword(e.target.value)} /></label>
-      <label>New password<input type="password" autoComplete="new-password" required minLength={10} value={newPassword} onChange={e => setNewPassword(e.target.value)} /></label>
+      <label>New password<input type="password" autoComplete="new-password" required minLength={10} value={newPassword} onChange={e => setNewPassword(e.target.value)} /><small className="field-help">At least 10 characters, including a letter and a number.</small></label>
       <label>Confirm new password<input type="password" autoComplete="new-password" required value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} /></label>
       <ErrorBox message={error} />{message && <div className="success-box"><CheckCircle2 size={16} />{message}</div>}
       <button className="button primary" disabled={busy}>{busy ? 'Saving…' : 'Update password'}</button></form></div></>
@@ -288,7 +288,7 @@ function CreateAgent({ teams, onCreated }: { teams: Team[]; onCreated: () => voi
     <form className="agent-form" onSubmit={submit}><label>Full name<input required minLength={2} maxLength={100} value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} /></label>
       <label>Email<input required type="email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} /></label>
       <label>Support team<select required value={form.team_id} onChange={e => setForm({ ...form, team_id: e.target.value })}><option value="">Select a team</option>{teams.map(team => <option key={team.id} value={team.id}>{team.name}</option>)}</select></label>
-      <label>Initial password<input required type="password" minLength={10} autoComplete="new-password" value={form.password} onChange={e => setForm({ ...form, password: e.target.value })} /></label>
+      <label>Initial password<input required type="password" minLength={10} autoComplete="new-password" value={form.password} onChange={e => setForm({ ...form, password: e.target.value })} /><small className="field-help">At least 10 characters, including a letter and a number.</small></label>
       <ErrorBox message={error} />{message && <div className="success-box"><CheckCircle2 size={16} />{message}</div>}
       <button className="button primary" disabled={busy || !teams.length}>{busy ? 'Creating…' : 'Create agent'}</button></form></section>
 }

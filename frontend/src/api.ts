@@ -22,14 +22,26 @@ export type Policy = { id: number; priority: string; response_minutes: number; r
 export type Notice = { id: number; ticket_id: number; message: string; created_at: string; read_at: string | null }
 
 export async function api<T>(path: string, options: RequestInit = {}): Promise<T> {
-  const response = await fetch(`/api${path}`, {
-    credentials: 'include',
-    headers: { 'Content-Type': 'application/json', ...options.headers },
-    ...options,
-  })
+  let response: Response
+  try {
+    response = await fetch(`/api${path}`, {
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json', ...options.headers },
+      ...options,
+    })
+  } catch {
+    throw new Error('Cannot reach the service desk. Check your connection and try again.')
+  }
   if (!response.ok) {
     const body = await response.json().catch(() => ({}))
-    throw new Error(typeof body.detail === 'string' ? body.detail : `Request failed (${response.status})`)
+    if (typeof body.detail === 'string') throw new Error(body.detail)
+    if (Array.isArray(body.detail) && body.detail.length) {
+      const first = body.detail[0]
+      const field = String(first.loc?.at(-1) || 'Input').replaceAll('_', ' ')
+      const message = String(first.msg || 'Invalid value').replace(/^Value error, /, '')
+      throw new Error(`${field.charAt(0).toUpperCase()}${field.slice(1)}: ${message}`)
+    }
+    throw new Error(`Request failed (${response.status}). Please try again.`)
   }
   return response.json() as Promise<T>
 }
