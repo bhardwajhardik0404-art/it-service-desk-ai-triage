@@ -74,6 +74,18 @@ class TicketInput(BaseModel):
     impact: str = Field(default="individual", pattern="^(individual|team|company)$")
     urgency: str = Field(default="normal", pattern="^(low|normal|high|critical)$")
 
+    @field_validator("title", "description", mode="before")
+    @classmethod
+    def trim_required_text(cls, value: str) -> str:
+        return value.strip() if isinstance(value, str) else value
+
+    @field_validator("affected_service", mode="before")
+    @classmethod
+    def normalize_service(cls, value: str) -> str:
+        if isinstance(value, str):
+            return value.strip() or "General IT"
+        return value
+
 
 class CommentInput(BaseModel):
     body: str = Field(min_length=1, max_length=3000)

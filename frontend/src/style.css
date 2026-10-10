@@ -214,3 +214,11 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 .agent-form .error-box,.agent-form .success-box{grid-column:1/-1;margin:0}
 .agent-form .button{justify-self:start;grid-column:1/-1}
 @media(max-width:760px){.account-layout{grid-template-columns:1fr}.agent-form{grid-template-columns:1fr}}
+
+/* Ticket queue controls */
+.filterbar{flex-wrap:wrap}
+.filterbar .search-box{min-width:210px}
+.filterbar select{min-width:145px}
+.filter-summary{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:9px 18px;border-bottom:1px solid #e4e9ee;color:#687b8d;font-size:12px}
+.filter-summary button{border:0;background:none;padding:3px 0;color:#17537f;font:inherit;font-weight:650;cursor:pointer}
+.filter-summary button:hover{text-decoration:underline}

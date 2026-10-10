@@ -4,6 +4,8 @@ A portfolio service desk for a final-year student. Employees submit IT tickets; 
 
 This is a **working application**, with employee, agent and admin experiences. The system keeps AI suggestions separate from final decisions so agents can inspect and override them.
 
+The ticket queue supports search, status/category/priority filters, and newest, oldest or priority sorting. Ticket intake trims required text and rejects blank requests before they enter triage.
+
 ## Demo at a glance
 
 | Login | Password | What to try |

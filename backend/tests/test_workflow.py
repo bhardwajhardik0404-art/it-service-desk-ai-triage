@@ -27,6 +27,25 @@ def test_ai_triage_routes_and_explains(clients):
     assert detail['ai_run']['confidence'] >= 0.65
 
 
+def test_ticket_input_trims_fields_and_rejects_whitespace(clients):
+    payload = {
+        'title': '     ', 'description': 'A useful description of the problem.',
+        'affected_service': 'Payroll', 'impact': 'individual', 'urgency': 'normal',
+    }
+    assert clients['employee'].post('/api/tickets', json=payload).status_code == 422
+    payload['title'] = 'Cannot access payroll'
+    payload['description'] = '             '
+    assert clients['employee'].post('/api/tickets', json=payload).status_code == 422
+
+    payload.update(title='  Cannot access payroll  ', description='  Payroll login keeps failing.  ', affected_service='   ')
+    response = clients['employee'].post('/api/tickets', json=payload)
+    assert response.status_code == 201, response.text
+    detail = clients['employee'].get(f"/api/tickets/{response.json()['id']}").json()
+    assert detail['title'] == 'Cannot access payroll'
+    assert detail['description'] == 'Payroll login keeps failing.'
+    assert detail['affected_service'] == 'General IT'
+
+
 def test_critical_suggestion_requires_review(clients):
     response = clients['employee'].post('/api/tickets', json={
         'title': 'Company-wide payroll access outage',

@@ -145,17 +145,35 @@ function TicketList({ user }: { user: User }) {
   const [query, setQuery] = useState('')
   const [status, setStatus] = useState('ALL')
   const [category, setCategory] = useState('ALL')
+  const [priority, setPriority] = useState('ALL')
+  const [sort, setSort] = useState<'newest' | 'oldest' | 'priority'>('newest')
+  const hasFilters = Boolean(query.trim()) || status !== 'ALL' || category !== 'ALL' || priority !== 'ALL' || sort !== 'newest'
+  const search = query.trim().toLowerCase()
   const filtered = (data || []).filter(t =>
     (status === 'ALL' || t.status === status) && (category === 'ALL' || t.category === category) &&
-    `${t.title} ${t.number} ${t.requester_name}`.toLowerCase().includes(query.toLowerCase()))
+    (priority === 'ALL' || t.final_priority === priority) &&
+    `${t.title} ${t.number} ${t.requester_name} ${t.assigned_team_name || ''}`.toLowerCase().includes(search))
+    .sort((a, b) => {
+      if (sort === 'priority') {
+        const rank = (value: string | null) => value ? ['P1', 'P2', 'P3', 'P4'].indexOf(value) : 4
+        return rank(a.final_priority) - rank(b.final_priority) || Date.parse(b.created_at) - Date.parse(a.created_at)
+      }
+      return sort === 'oldest' ? Date.parse(a.created_at) - Date.parse(b.created_at) : Date.parse(b.created_at) - Date.parse(a.created_at)
+    })
+  function resetFilters() { setQuery(''); setStatus('ALL'); setCategory('ALL'); setPriority('ALL'); setSort('newest') }
   return <><div className="page-intro compact"><div><div className="eyebrow">TICKET MANAGEMENT</div><h2>{user.role === 'employee' ? 'Your requests' : 'Support queue'}</h2><p>{user.role === 'employee' ? 'Track every request from submission to resolution.' : 'Prioritize work, review AI decisions, and keep SLAs on track.'}</p></div>
     {user.role === 'employee' && <Link className="button primary" to="/tickets/new"><Plus size={17} /> New ticket</Link>}</div>
-    <ErrorBox message={error} /><section className="panel table-panel"><div className="filterbar"><div className="search-box"><Search size={17} /><input placeholder="Search tickets..." value={query} onChange={e => setQuery(e.target.value)} /></div>
-      <select value={status} onChange={e => setStatus(e.target.value)}><option value="ALL">All statuses</option>{['NEW','TRIAGING','OPEN','IN_PROGRESS','WAITING_FOR_EMPLOYEE','ESCALATED','RESOLVED','CLOSED'].map(x => <option key={x}>{x}</option>)}</select>
-      <select value={category} onChange={e => setCategory(e.target.value)}><option value="ALL">All categories</option>{['HARDWARE','SOFTWARE','ACCESS','OTHER'].map(x => <option key={x}>{x}</option>)}</select></div>
+    <ErrorBox message={error} /><section className="panel table-panel"><div className="filterbar"><div className="search-box"><Search size={17} /><input aria-label="Search tickets" placeholder="Search tickets..." value={query} onChange={e => setQuery(e.target.value)} /></div>
+      <select aria-label="Filter by status" value={status} onChange={e => setStatus(e.target.value)}><option value="ALL">All statuses</option>{['NEW','TRIAGING','OPEN','IN_PROGRESS','WAITING_FOR_EMPLOYEE','ESCALATED','RESOLVED','CLOSED'].map(x => <option key={x} value={x}>{statusLabel(x)}</option>)}</select>
+      <select aria-label="Filter by category" value={category} onChange={e => setCategory(e.target.value)}><option value="ALL">All categories</option>{['HARDWARE','SOFTWARE','ACCESS','OTHER'].map(x => <option key={x} value={x}>{statusLabel(x)}</option>)}</select>
+      <select aria-label="Filter by priority" value={priority} onChange={e => setPriority(e.target.value)}><option value="ALL">All priorities</option>{['P1','P2','P3','P4'].map(x => <option key={x} value={x}>{x}</option>)}</select>
+      <select aria-label="Sort tickets" value={sort} onChange={e => setSort(e.target.value as typeof sort)}><option value="newest">Newest first</option><option value="oldest">Oldest first</option><option value="priority">Highest priority</option></select></div>
+      {data && <div className="filter-summary" aria-live="polite"><span>Showing {filtered.length} of {data.length} tickets</span>{hasFilters && <button type="button" onClick={resetFilters}>Clear filters</button>}</div>}
+      {data === null && !error && <div className="loading">Loading tickets…</div>}
+      {data && <>
       <div className="table-scroll"><table className="ticket-table"><thead><tr><th>Ticket</th><th>Category</th><th>Priority</th><th>Status</th><th>Assigned team</th><th>Created</th><th></th></tr></thead><tbody>
         {filtered.map(t => <tr key={t.id}><td><Link to={`/tickets/${t.id}`} className="table-ticket"><strong>{t.title}</strong><small>{t.number} · {t.requester_name}</small></Link></td><td>{statusLabel(t.category)}</td><td><Badge value={t.final_priority} /></td><td><Badge value={t.status} /></td><td>{t.assigned_team_name || 'Awaiting triage'}</td><td>{dateTime(t.created_at)}</td><td><Link className="row-arrow" to={`/tickets/${t.id}`}><ArrowRight size={17} /></Link></td></tr>)}</tbody></table></div>
-      {!filtered.length && <Empty title="No matching tickets" detail="Try a different filter or create a new request." />}
+      {!filtered.length && <Empty title={data.length ? 'No matching tickets' : 'No tickets yet'} detail={data.length ? 'Try another filter or clear the current selection.' : 'New requests will appear here.'} />}</>}
     </section></>
 }
 
@@ -165,15 +183,19 @@ function NewTicket() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   async function submit(e: FormEvent) {
-    e.preventDefault(); setBusy(true); setError('')
-    try { const result = await api<Ticket>('/tickets', { method: 'POST', body: json({ ...form, affected_service: form.affected_service || 'General IT' }) }); navigate(`/tickets/${result.id}`) }
+    e.preventDefault(); setError('')
+    const title = form.title.trim()
+    const description = form.description.trim()
+    if (title.length < 5 || description.length < 10) { setError('Enter a title of at least 5 characters and a description of at least 10 characters.'); return }
+    setBusy(true)
+    try { const result = await api<Ticket>('/tickets', { method: 'POST', body: json({ ...form, title, description, affected_service: form.affected_service.trim() || 'General IT' }) }); navigate(`/tickets/${result.id}`) }
     catch (err) { setError((err as Error).message); setBusy(false) }
   }
   return <><div className="page-intro compact"><div><div className="eyebrow">EMPLOYEE PORTAL</div><h2>Tell us what happened.</h2><p>Include enough detail for the right team to start helping quickly.</p></div></div>
     <div className="form-layout"><form className="panel create-panel" onSubmit={submit}><h3>Request details</h3><p className="muted">Your ticket will be saved immediately. AI triage runs after submission.</p>
       <label>Short title <span>*</span><input required minLength={5} maxLength={180} placeholder="e.g. Cannot access payroll application" value={form.title} onChange={e => setForm({...form,title:e.target.value})} /></label>
-      <label>Describe the issue <span>*</span><textarea required minLength={10} rows={6} placeholder="What were you trying to do? What error did you see? Who is affected?" value={form.description} onChange={e => setForm({...form,description:e.target.value})} /></label>
-      <label>Affected service<input placeholder="e.g. Payroll, VPN, laptop" value={form.affected_service} onChange={e => setForm({...form,affected_service:e.target.value})} /></label>
+      <label>Describe the issue <span>*</span><textarea required minLength={10} maxLength={5000} rows={6} placeholder="What were you trying to do? What error did you see? Who is affected?" value={form.description} onChange={e => setForm({...form,description:e.target.value})} /></label>
+      <label>Affected service<input maxLength={100} placeholder="e.g. Payroll, VPN, laptop" value={form.affected_service} onChange={e => setForm({...form,affected_service:e.target.value})} /></label>
       <div className="two-cols"><label>Impact<select value={form.impact} onChange={e => setForm({...form,impact:e.target.value})}><option value="individual">Only me</option><option value="team">My team</option><option value="company">Company-wide</option></select></label>
       <label>Urgency<select value={form.urgency} onChange={e => setForm({...form,urgency:e.target.value})}><option value="low">Low</option><option value="normal">Normal</option><option value="high">High</option><option value="critical">Critical</option></select></label></div>
       <ErrorBox message={error} /><div className="form-actions"><Link to="/tickets" className="button secondary">Cancel</Link><button className="button primary" disabled={busy}>{busy ? 'Creating…' : 'Create ticket'} <ArrowRight size={17} /></button></div>
